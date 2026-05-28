@@ -70,13 +70,68 @@ include '../includes/navbar.html';
         .status-ok { background: #d1e7dd; color: #0f5132; }
         .status-warning { background: #fff3cd; color: #664d03; }
         .status-critical { background: #f8d7da; color: #842029; }
-        .summary-table th {
-            width: 220px;
-            font-weight: 600;
-            border-top: none;
+        .summary-table {
+            width: max-content;
+            min-width: 100%;
+            table-layout: fixed;
         }
+        .summary-table th,
         .summary-table td {
             border-top: none;
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            min-width: 140px;
+        }
+        .summary-table th {
+            font-weight: 700;
+            background: rgba(248, 249, 250, 0.98);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .summary-table td {
+            font-weight: 400;
+            max-width: none;
+        }
+        .summary-table th .col-label {
+            display: inline-block;
+            max-width: calc(100% - 12px);
+            vertical-align: middle;
+        }
+        .summary-table th .col-resizer {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 12px;
+            height: 100%;
+            cursor: col-resize;
+            user-select: none;
+        }
+        .summary-table th {
+            position: sticky;
+            top: 0;
+            overflow: visible;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+        .summary-table tr.status-ok td {
+            background: #e9f7ef;
+        }
+        .summary-table tr.status-warning td {
+            background: #fff7e0;
+        }
+        .summary-table tr.status-critical td {
+            background: #fde2e1;
+        }
+        .summary-status {
+            font-weight: 700;
+            text-transform: uppercase;
         }
         .code-preview {
             background: #0f172a;
@@ -84,6 +139,7 @@ include '../includes/navbar.html';
             border-radius: 0.8rem;
             padding: 1rem;
             overflow-x: auto;
+            cursor: default;
         }
         .card-header { font-weight: 700; }
     </style>
@@ -148,18 +204,19 @@ include '../includes/navbar.html';
         <div class="col-lg-12">
             <div class="card dashboard-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Summary table</span>
-                    <span id="summaryStatusBadge" class="status-summary status-ok">Unknown</span>
+                    <span>Summary table - Historical files</span>
+                    <button type="button" id="refreshSummaryBtn" class="btn btn-sm btn-primary">Refresh</button>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table summary-table mb-0">
+                    <div class="table-responsive" style="max-height: 450px; overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.5rem;">
+                        <table class="table table-sm summary-table mb-0">
+                            <thead id="summaryTableHead">
+                                <tr>
+                                    <th>Filename</th>
+                                </tr>
+                            </thead>
                             <tbody id="summaryTableBody">
-                                <tr><th>Timestamp</th><td>-</td></tr>
-                                <tr><th>Temperature</th><td>-</td></tr>
-                                <tr><th>Pressure</th><td>-</td></tr>
-                                <tr><th>Status</th><td>-</td></tr>
-                                <tr><th>Alerts</th><td>-</td></tr>
+                                <tr><td colspan="100%" class="text-muted text-center py-3">No files loaded yet. Click refresh to load historical data.</td></tr>
                             </tbody>
                         </table>
                     </div>

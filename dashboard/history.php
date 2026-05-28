@@ -107,6 +107,17 @@ function tryLocalFile(string $storagePath, string $fileName): ?string {
     return file_get_contents($path);
 }
 
+// Sanitize history payloads on read by removing legacy metadata fields.
+// This prevents old files from exposing the `source` property in the UI.
+function sanitizeHistoryContent(string $raw): string {
+    $payload = json_decode($raw, true);
+    if (is_array($payload)) {
+        unset($payload['source']);
+        return json_encode($payload);
+    }
+    return $raw;
+}
+
 $useAzure = $azureBlobUrl !== '' && $azureSasToken !== '';
 
 // If a specific file was requested, attempt Azure first if configured
@@ -116,7 +127,7 @@ if (isset($_GET['file'])) {
         $content = getAzureBlobContent($azureBlobUrl, $azureSasToken, $file);
         if ($content !== null) {
             header('Content-Type: application/json');
-            echo $content;
+            echo sanitizeHistoryContent($content);
             exit;
         }
     }
@@ -129,7 +140,7 @@ if (isset($_GET['file'])) {
     }
 
     header('Content-Type: application/json');
-    echo $content;
+    echo sanitizeHistoryContent($content);
     exit;
 }
 

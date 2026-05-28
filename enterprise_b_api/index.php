@@ -47,9 +47,6 @@ $data = generate_data();
 // Merge override values on top of generated data when present
 if (!empty($override)) {
     $data = array_merge($data, $override);
-    $data['source'] = 'override';
-} else {
-    $data['source'] = 'generated';
 }
 
 echo json_encode($data);

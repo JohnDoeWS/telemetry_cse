@@ -1,0 +1,6 @@
+{
+    "api_base_url": "http:\/\/localhost:5000\/index.php",
+    "poll_interval": 60,
+    "azure_blob_url": "",
+    "azure_sas_token": ""
+}

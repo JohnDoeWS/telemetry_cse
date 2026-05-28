@@ -15,21 +15,27 @@
  */
 
 function generate_data() {
-    // Temperature in Celsius (mock range)
-    $temperature = round(mt_rand(2600, 3400) / 100, 2); // 26.00 - 34.00 °C
-
-    // Pressure in bar (mock range)
-    $pressure = round(mt_rand(15000, 22000) / 100, 2); // 150.00 - 220.00 bar
-
-    // Determine simplified status and alerts based on thresholds
-    $status = 'OK';
+    // Determine status distribution with skewed probabilities:
+    // 95.0% OK, 4.9% Warning, 0.1% Critical.
+    // For OK results we keep temperature and pressure in safe nominal ranges.
+    // Warning and Critical results are rare and use higher values to match the
+    // desired distribution.
+    $roll = mt_rand(1, 1000);
     $alerts = [];
-    if ($temperature > 33 || $pressure > 210) {
-        $status = 'Critical';
-        $alerts[] = 'Sensor reading above critical threshold';
-    } elseif ($temperature > 31 || $pressure > 200) {
+    if ($roll <= 950) {
+        $status = 'OK';
+        $temperature = round(mt_rand(2600, 3100) / 100, 2); // mostly nominal
+        $pressure = round(mt_rand(15000, 19500) / 100, 2);
+    } elseif ($roll <= 999) {
         $status = 'Warning';
+        $temperature = round(mt_rand(3101, 3300) / 100, 2);
+        $pressure = round(mt_rand(19501, 21000) / 100, 2);
         $alerts[] = 'Sensor reading approaching critical threshold';
+    } else {
+        $status = 'Critical';
+        $temperature = round(mt_rand(3301, 3400) / 100, 2);
+        $pressure = round(mt_rand(21001, 22000) / 100, 2);
+        $alerts[] = 'Sensor reading above critical threshold';
     }
 
     // Additional synthetic details that the dashboard can display

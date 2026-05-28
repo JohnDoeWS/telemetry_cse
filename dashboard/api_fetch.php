@@ -47,6 +47,18 @@ if (file_exists($settingsPath)) {
     }
 }
 
+// Remove any legacy metadata fields that should not be stored or returned.
+// This keeps persisted history and live fetch responses clean and focused
+// on the actual reactor telemetry values.
+function sanitize_payload(string $raw) : string {
+    $payload = json_decode($raw, true);
+    if (is_array($payload)) {
+        unset($payload['source']);
+        return json_encode($payload);
+    }
+    return $raw;
+}
+
 // Fetch the live API payload. The code uses file_get_contents() for
 // simplicity; in production you might prefer curl with timeouts.
 $response = @file_get_contents($apiBaseUrl);
@@ -55,6 +67,7 @@ if ($response === false) {
     echo json_encode(['error' => 'could not fetch API data']);
     exit;
 }
+$response = sanitize_payload($response);
 
 $fileName = gmdate('Y-m-d_H-i-s') . '.json';
 

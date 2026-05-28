@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             renderRealtime(data);
-            renderSummary(data);
             output.textContent = 'Live reactor data loaded';
         } catch (error) {
             output.textContent = 'Unable to fetch realtime data';
@@ -75,6 +74,150 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Load all history files and populate summary table with all files and their JSON properties
+    async function loadSummaryTable() {
+        const tableHead = document.getElementById('summaryTableHead');
+        const tableBody = document.getElementById('summaryTableBody');
+        try {
+            const response = await fetch('history.php');
+            if (!response.ok) {
+                tableBody.innerHTML = '<tr><td colspan="100%" class="text-danger">Unable to load history</td></tr>';
+                return;
+            }
+            const data = await response.json();
+            if (!Array.isArray(data.files) || data.files.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="100%" class="text-muted text-center py-3">No historical files available</td></tr>';
+                return;
+            }
+
+            // Fetch content for all files and collect all unique keys
+            const allFiles = data.files;
+            const fileDataList = [];
+            const allKeys = new Set(['Filename']);
+
+            for (const file of allFiles) {
+                try {
+                    const fileResponse = await fetch(`history.php?file=${encodeURIComponent(file.name)}`);
+                    if (fileResponse.ok) {
+                        const fileData = await fileResponse.json();
+                        const normalizedData = { ...fileData };
+                        if (normalizedData.details && typeof normalizedData.details === 'object' && !Array.isArray(normalizedData.details)) {
+                            Object.entries(normalizedData.details).forEach(([subKey, subValue]) => {
+                                normalizedData[subKey] = subValue;
+                                allKeys.add(subKey);
+                            });
+                            delete normalizedData.details;
+                        }
+                        fileDataList.push({ name: file.name, data: normalizedData });
+                        if (typeof normalizedData === 'object' && normalizedData !== null) {
+                            Object.keys(normalizedData).forEach(key => {
+                                if (key === 'source') {
+                                    return;
+                                }
+                                allKeys.add(key);
+                            });
+                        }
+                    } else {
+                        fileDataList.push({ name: file.name, data: {} });
+                    }
+                } catch (error) {
+                    fileDataList.push({ name: file.name, data: {} });
+                }
+            }
+
+            // Build table header from all unique keys, keeping important keys first.
+            // If detail keys are present, they are promoted to their own columns.
+            const preferredOrder = ['Filename', 'timestamp', 'status', 'temperature', 'pressure', 'alerts'];
+            const extraKeys = Array.from(allKeys).filter(key => !preferredOrder.includes(key)).sort();
+            const keyArray = [
+                ...preferredOrder.filter(key => allKeys.has(key)),
+                ...extraKeys,
+            ];
+
+            const headerRow = document.createElement('tr');
+            keyArray.forEach(key => {
+                const th = document.createElement('th');
+                th.style.position = 'relative';
+                th.innerHTML = `<span class="col-label">${key}</span><span class="col-resizer"></span>`;
+                headerRow.appendChild(th);
+            });
+            tableHead.innerHTML = '';
+            tableHead.appendChild(headerRow);
+            initResizableSummaryColumns();
+
+            // Build table rows with one column per key.
+            tableBody.innerHTML = '';
+            fileDataList.forEach(fileInfo => {
+                const row = document.createElement('tr');
+                const statusValue = String(fileInfo.data.status || '').toLowerCase();
+                if (['ok', 'warning', 'critical'].includes(statusValue)) {
+                    row.classList.add(`status-${statusValue}`);
+                }
+
+                keyArray.forEach(key => {
+                    const td = document.createElement('td');
+                    if (key === 'Filename') {
+                        td.textContent = fileInfo.name;
+                    } else {
+                        const value = fileInfo.data[key];
+                        if (value !== undefined && value !== null) {
+                            if (key === 'timestamp') {
+                                const date = new Date(value);
+                                td.textContent = isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+                            } else if (Array.isArray(value)) {
+                                td.textContent = value.join(', ');
+                            } else if (typeof value === 'object') {
+                                td.textContent = JSON.stringify(value);
+                            } else {
+                                td.textContent = String(value);
+                            }
+                        } else {
+                            td.textContent = '-';
+                        }
+                    }
+                    if (key === 'status') {
+                        td.className = 'summary-status';
+                    }
+                    row.appendChild(td);
+                });
+                tableBody.appendChild(row);
+            });
+        } catch (error) {
+            tableBody.innerHTML = '<tr><td colspan="100%" class="text-danger">Error loading summary table</td></tr>';
+        }
+    }
+
+    function initResizableSummaryColumns() {
+        const table = document.querySelector('.summary-table');
+        if (!table) return;
+
+        const headerCells = table.querySelectorAll('th');
+        headerCells.forEach(th => {
+            const resizer = th.querySelector('.col-resizer');
+            if (!resizer) return;
+            let startX = 0;
+            let startWidth = 0;
+
+            const onMouseMove = e => {
+                const delta = e.pageX - startX;
+                th.style.width = `${Math.max(startWidth + delta, 100)}px`;
+            };
+
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            resizer.addEventListener('mousedown', e => {
+                e.preventDefault();
+                startX = e.pageX;
+                startWidth = th.offsetWidth;
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        });
+    }
+
     // Request a particular historical JSON file and show its contents
     async function loadHistoryFile(name) {
         const details = document.getElementById('historyDetails');
@@ -86,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const data = await response.json();
             details.textContent = JSON.stringify(data, null, 2);
-            renderSummary(data);
         } catch (error) {
             details.textContent = 'Unable to load file contents';
         }
@@ -189,10 +331,16 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchRealtime();
     fetchHistory();
     loadMaintenance();
+    loadSummaryTable();
 
-    // Attach click handler to Refresh button for manual data updates
+    // Attach click handlers to Refresh buttons for manual data updates
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', fetchRealtime);
+    }
+
+    const refreshSummaryBtn = document.getElementById('refreshSummaryBtn');
+    if (refreshSummaryBtn) {
+        refreshSummaryBtn.addEventListener('click', loadSummaryTable);
     }
 });

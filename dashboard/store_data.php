@@ -35,6 +35,19 @@ if (trim($body) === '') {
     exit;
 }
 
+// Strip any metadata fields from POSTed payloads before persisting.
+// This ensures the history files only contain actual sensor telemetry.
+function sanitize_payload(string $raw): string {
+    $payload = json_decode($raw, true);
+    if (is_array($payload)) {
+        unset($payload['source']);
+        return json_encode($payload);
+    }
+    return $raw;
+}
+
+$body = sanitize_payload($body);
+
 // Load optional Azure settings
 $settingsPath = __DIR__ . '/settings.json';
 $azureBlobUrl = '';
