@@ -18,12 +18,13 @@ else{
 
 
     $sql1 = "SELECT users_username, users_password FROM users WHERE users_username = '{$username}' AND users_password = '{$password}'";
-    $sql2 = "INSERT INTO users (users_username, users_password) VALUES ('$username', '$password')";
-
-    $result1 = mysqli_query ($connection, $sql1) or die (mysqli_error ($connection));
-
-    if (mysqli_num_rows ($result1) == 0){
-        if (mysqli_query ($connection, $sql2)){
+   $stmt = mysqli_prepare($connection, "INSERT INTO users (users_username, users_password) VALUES (?, ?)");
+	mysqli_stmt_bind_param($stmt, "ss", $username, $password);
+	mysqli_stmt_execute($stmt);
+	mysqli_stmt_close($stmt);
+	$result1 = mysqli_query ($connection, $sql1) or die (mysqli_error ($connection));
+	if (mysqli_num_rows ($result1) == 0){
+	    if ($stmt){
             include 'includes/new_registration.php';
         }
         else{
